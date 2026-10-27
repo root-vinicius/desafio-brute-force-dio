@@ -19,7 +19,7 @@ Para a realização dos estudos e simulações com segurança, utilizou-se um am
 
 > **Nota de Segurança:** Todos os testes de verificação foram restritos ao ambiente de laboratório isolado, respeitando as boas práticas e diretrizes éticas da segurança da informação.
 
----
+--- ![Evidência do IP do Metasploitable](foto.png)
 
 ## 🔍 Conceitos Estudados
 
