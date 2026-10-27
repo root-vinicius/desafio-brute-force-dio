@@ -1,0 +1,7 @@
+msfadmin
+root
+user
+postgres
+mysql
+ftp
+backup
